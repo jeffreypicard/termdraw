@@ -1,3 +1,8 @@
+/*
+ * termdraw.c
+ *
+ * Author: Jeffrey Picard
+ */
 #include <sys/ioctl.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -6,13 +11,30 @@
 #include <termios.h>
 
 struct screen_state_t {
+	/* The current location of the cursor in x, y coords */
 	int cur_x;
 	int cur_y;
+	/* Size of the screen in cols, rows */
 	int cols;
 	int rows;
+	/* pointer into the state buffer that is 
+	 * positioned at the cursor location */
+	char *cur_ptr;
+	/* buffer holder the current screen state */
 	char *buf;
 };
 
+/*
+ * set_term_environ
+ *
+ * Here we set the terminal environment through the termios struct.
+ * We turn off canonical input, so we do *not* wait for '\n' before
+ * we get input data. We also turn off echoing, so the typed input
+ * it not written to the screen. Lastly we set c_cc[VMIN] = 1 so that
+ * we return with input as soon as one character is available and we
+ * set c_cc[VTIME] = 0 so we never time out but wait indefinitely for
+ * the user to provide input.
+ */
 int
 set_term_environ(void)
 {
@@ -32,6 +54,12 @@ set_term_environ(void)
 	return 0;
 }
 
+/*
+ * cleanup
+ *
+ * Be a well behaved program and leave free memory, reset termios, etc.
+ * Is this really needed though?
+ */
 int
 cleanup(void) 
 {
@@ -49,6 +77,17 @@ cleanup(void)
 	return 0;
 }
 
+/*
+ * move_cursor
+ * screen: screen state struct
+ * direction: direction of movement
+ * n: number of places to move
+ *
+ * Moves the cursor n places up, down, left or right. Updates
+ * the current location of the cursor in the screen struct as
+ * a side effect. Does not allow movement outside of the screen
+ * window.
+ */
 int
 move_cursor(struct screen_state_t *screen, char direction, int n)
 {
@@ -80,6 +119,11 @@ move_cursor(struct screen_state_t *screen, char direction, int n)
 	return 0;
 }
 
+/*
+ * getch
+ *
+ * Get one character from stdin
+ */
 int
 getch()
 {
@@ -91,6 +135,15 @@ getch()
 	return buf;
 }
 
+/*
+ * fill_screen
+ *
+ * screen: screen state struct
+ * c: character to fill the screen with
+ *
+ * Fill the screen with a given character. moves the cursor
+ * back to the previous location after the writing is finished.
+ */
 void
 fill_screen(struct screen_state_t *screen, char c)
 {
