@@ -1,0 +1,6 @@
+termdraw
+
+termdraw is intended to be a very simple, bare bones ANSI terminal compliant
+"graphics" or drawing library. Some possible features might be drawing shapes,
+loading files and displaying, possibly with attributes such as not being able
+to move the cursor through walls, etc.
