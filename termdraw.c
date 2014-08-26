@@ -24,6 +24,11 @@ struct screen_state_t {
 	char *buf;
 };
 
+#define CURSOR_UP_N(n) printf("\033[%dA", n)
+#define CURSOR_DOWN_N(n) printf("\033[%dB", n)
+#define CURSOR_LEFT_N(n) printf("\033[%dD", n)
+#define CURSOR_RIGHT_N(n) printf("\033[%dC", n)
+
 /*
  * set_term_environ
  *
@@ -94,22 +99,22 @@ move_cursor(struct screen_state_t *screen, char direction, int n)
 	switch (direction) {
 		case 'u':
 			if (screen->cur_y <= 1) break;
-			printf("\033[%dA", n);
+			CURSOR_UP_N(n);
 			screen->cur_y -= n;
 			break;
 		case 'd':
 			if (screen->cur_y >= screen->rows) break;
-			printf("\033[%dB", n);
+			CURSOR_DOWN_N(n);
 			screen->cur_y += n;
 			break;
 		case 'l':
 			if (screen->cur_x <= 1) break;
-			printf("\033[%dD", n);
+			CURSOR_LEFT_N(n);
 			screen->cur_x -= n;
 			break;
 		case 'r':
 			if (screen->cur_x >= screen->cols) break;
-			printf("\033[%dC", n);
+			CURSOR_RIGHT_N(n);
 			screen->cur_x += n;
 			break;
 		default:
@@ -133,6 +138,50 @@ getch()
 		return 0;
 	}
 	return buf;
+}
+
+void
+draw_square(struct screen_state_t *screen, 
+		int x, int y, int rows, int cols, char c)
+{
+	int i;
+
+	/* position cursor at upper left corner */
+	printf("\033[%d;%dH", x, y);
+	fflush(stdout);
+
+	/* draw top edge */
+	for (i = 0; i < rows; i++)
+		printf("%c", c);
+	CURSOR_LEFT_N(1);
+
+	/* draw right edge */
+	for (i = 0; i < cols; i++) {
+		CURSOR_DOWN_N(1);
+		printf("%c", c);
+		CURSOR_LEFT_N(1);
+	}
+
+	/* reposition at upper left corner */
+	printf("\033[%d;%dH", x, y);
+	fflush(stdout);
+
+	/* draw left edge */
+	for (i = 0; i < cols; i++) {
+		CURSOR_DOWN_N(1);
+		printf("%c", c);
+		CURSOR_LEFT_N(1);
+	}
+
+	/*printf("\033[%d;%dH", x, y + rows);*/
+
+	/* Draw bottom edge */
+	for (i = 0; i < rows; i++)
+		printf("%c", c);
+
+	//printf("\033[%d;%dH", w.ws_row / 2, w.ws_col / 2);
+	printf("\033[%d;%dH", screen->cur_y, screen->cur_x);
+	fflush(stdout);
 }
 
 /*
@@ -177,7 +226,8 @@ int main (int argc, char **argv)
 	screen.rows = 40;
 	screen.cur_x = 40;
 	screen.cur_y = 20;
-	fill_screen(&screen, '0');
+	//fill_screen(&screen, '0');
+	draw_square(&screen, 1, 1, 80, 40, '0');
 
 	while (1) {
 		c = getch();
@@ -199,7 +249,8 @@ int main (int argc, char **argv)
 			default:
 				break;
 		}
-		fill_screen(&screen, (char)c);
+		draw_square(&screen, 1, 1, 80, 40, (char)c);
+		//fill_screen(&screen, (char)c);
 	}
 
 	cleanup();
