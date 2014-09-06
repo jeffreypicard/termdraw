@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <ctype.h>
 
+#include <stdlib.h>
+
 #include <termios.h>
 
 struct screen_state_t {
@@ -28,6 +30,44 @@ struct screen_state_t {
 #define CURSOR_DOWN_N(n) printf("\033[%dB", n)
 #define CURSOR_LEFT_N(n) printf("\033[%dD", n)
 #define CURSOR_RIGHT_N(n) printf("\033[%dC", n)
+#define CURSOR_SET(x, y) printf("\033[%d;%dH", y, x)
+
+int
+init_screen(struct screen_state_t *screen, int x, int y)
+{
+	int i;
+
+	screen->cols = x;
+	screen->rows = y;
+	screen->cur_x = 1;
+	screen->cur_y = 1;
+
+	screen->buf = calloc( x * y, sizeof(char));
+	if (!screen->buf)
+		return -1;
+	for (i = 0; i < x * y; i++)
+		screen->buf[i] = '&';
+
+	screen->cur_ptr = screen->buf;
+
+	return 0;
+}
+
+void
+draw_screen(struct screen_state_t *screen)
+{
+	int i, j;
+	char *cur = screen->buf;
+	CURSOR_SET(1, 1);
+	for (i = 0; i < screen->rows; i++) {
+		for (j = 0; j < screen->cols; j++) {
+			printf("%c", *cur++);
+		}
+		printf("\n");
+	}
+	CURSOR_SET(screen->cur_x, screen->cur_y);
+	fflush(stdout);
+}
 
 /*
  * set_term_environ
@@ -141,6 +181,32 @@ getch()
 }
 
 void
+draw_diag_line(struct screen_state_t *screen,
+		int x, int y, int rise, int run, int length, char c)
+{
+	int i, j;
+
+	/* position cursor at starting point */
+	printf("\033[%d;%dH", x, y);
+	
+	for (i = 0; i < length; i++) {
+		for(j = 0; j < rise; j++) {
+			printf("%c", c);
+			CURSOR_LEFT_N(1);
+			CURSOR_UP_N(1);
+		}
+		CURSOR_RIGHT_N(1);
+		for(j = 0; j < run; j++) {
+			printf("%c", c);
+		}
+		CURSOR_UP_N(1);
+	}
+
+	printf("\033[%d;%dH", screen->cur_y, screen->cur_x);
+	fflush(stdout);
+}
+
+void
 draw_square(struct screen_state_t *screen, 
 		int x, int y, int rows, int cols, char c)
 {
@@ -222,12 +288,19 @@ int main (int argc, char **argv)
 	/* Clear the entire screen intially */
 	printf("\033[2J");
 	set_term_environ();
-	screen.cols = 80;
-	screen.rows = 40;
+
+	init_screen(&screen, 80, 40);
+	//draw_screen(&screen);
+
 	screen.cur_x = 40;
 	screen.cur_y = 20;
+
+	draw_screen(&screen);
+
 	//fill_screen(&screen, '0');
-	draw_square(&screen, 1, 1, 80, 40, '0');
+	//draw_square(&screen, 1, 1, 80, 40, '0');
+
+	//draw_diag_line(&screen, 40, 1, 1, 3, 10, '0');
 
 	while (1) {
 		c = getch();
